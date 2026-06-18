@@ -214,7 +214,7 @@ export default function ParentPortal({ activeTab, currentUser }) {
                         </p>
                         {a.photo_url && (
                           <img 
-                            src={a.photo_url} 
+                            src={a.photo_url.startsWith('http') ? a.photo_url : `${import.meta.env.VITE_API_URL || ''}${a.photo_url}`} 
                             alt={`${a.type} activity snapshot`} 
                             style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: '0.5rem', marginTop: '1rem' }}
                           />
