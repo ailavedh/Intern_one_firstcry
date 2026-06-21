@@ -1,12 +1,13 @@
 {
   "name": "daily-activity-portal",
   "version": "1.0.0",
-  "description": "��#\u0000 \u0000I\u0000n\u0000t\u0000e\u0000r\u0000n\u0000_\u0000p\u0000r\u0000o\u0000j\u0000e\u0000c\u0000t\u0000_\u00001\u0000\r\u0000 \u0000#\u0000 \u0000I\u0000n\u0000t\u0000e\u0000r\u0000n\u0000_\u0000p\u0000r\u0000o\u0000j\u0000e\u0000c\u0000t\u0000_\u0000o\u0000n\u0000e\u0000\r\u0000 \u0000",
+  "description": "Intern project one",
   "main": "index.js",
   "directories": {
     "test": "tests"
   },
   "scripts": {
+    "postinstall": "npm run build",
     "install-all": "cd backend && npm install && cd ../frontend && npm install --include=dev",
     "build": "npm run install-all && cd frontend && npm run build",
     "start": "cd backend && node server.js"
