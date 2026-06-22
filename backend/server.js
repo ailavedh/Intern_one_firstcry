@@ -51,7 +51,10 @@ async function setupTransporter() {
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
-      }
+      },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,   // 10 seconds timeout
+      socketTimeout: 10000      // 10 seconds timeout
     });
     console.log('Using configured SMTP credentials.');
   } else {
@@ -158,6 +161,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     res.json({ success: true, message: 'OTP sent to email.' });
   } catch (err) {
     console.error('Forgot password error:', err);
+    if (err.code === 'ETIMEDOUT' || err.code === 'ECONNECTION') {
+      console.error('SMTP Connection Timeout: Render might be blocking outbound SMTP connections.');
+    }
     res.status(500).json({ error: 'Failed to process forgot password request.' });
   }
 });
