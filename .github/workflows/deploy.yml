@@ -56,3 +56,10 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+echo "# Inter_one_FirstCry" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/ailavedh/Inter_one_FirstCry.git
+git push -u origin main

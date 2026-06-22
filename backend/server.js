@@ -152,7 +152,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         console.log("Ethereal Preview URL: %s", previewUrl);
       }
     } else {
-       console.log('OTP generated (no email config):', otp);
+      console.log('OTP generated (no email config):', otp);
     }
 
     res.json({ success: true, message: 'OTP sent to email.' });
@@ -315,10 +315,10 @@ app.put('/api/users/:id', async (req, res) => {
     } else {
       await db.query('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, parseInt(id)]);
     }
-    
+
     // Also update parent_username in children table if email changed
     await db.query('UPDATE children SET parent_username = ? WHERE parent_id = ?', [email, parseInt(id)]);
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -357,7 +357,7 @@ app.post('/api/counsellor/notes', async (req, res) => {
 app.post('/api/children/:id/stats', async (req, res) => {
   const { water_intake, rest, focus } = req.body;
   try {
-    await db.query('UPDATE children SET water_intake = ?, rest = ?, focus = ? WHERE id = ?', 
+    await db.query('UPDATE children SET water_intake = ?, rest = ?, focus = ? WHERE id = ?',
       [water_intake || null, rest || null, focus || null, parseInt(req.params.id)]);
     res.json({ success: true });
   } catch (err) {
