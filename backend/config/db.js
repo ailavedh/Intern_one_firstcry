@@ -64,8 +64,6 @@ async function initializeSchema() {
   const adminCheck = await query("SELECT id FROM users WHERE role = 'admin'");
   if (adminCheck.length === 0) {
     await query('INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)', ['admin', 'admin123@gmail.com', 'admin', 'Aila@2007']);
-  } else {
-    await query("UPDATE users SET name = 'admin', email = 'admin123@gmail.com', password = 'Aila@2007' WHERE id = ?", [adminCheck[0].id || adminCheck[0].ID]);
   }
 
   // Ensure new columns exist for stats (SQLite ignores duplicate column errors if we catch them, or we can use PRAGMA but try-catch is easiest)
@@ -75,7 +73,7 @@ async function initializeSchema() {
 }
 
 async function resetDatabase() {
-  await query('DELETE FROM users WHERE email != ?', ['admin123@gmail.com']);
+  await query("DELETE FROM users WHERE role != 'admin'");
   await query('DELETE FROM children');
   await query('DELETE FROM activities');
   await query('DELETE FROM counsellor_notes');

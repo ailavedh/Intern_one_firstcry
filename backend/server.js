@@ -39,7 +39,6 @@ const upload = multer({
     cb(new Error('Only images are allowed!'));
   },
   limits: { fileSize: 5 * 1024 * 1024 }
-  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 let transporter;
@@ -221,8 +220,8 @@ app.post('/api/users', async (req, res) => {
 app.delete('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const user = await db.query('SELECT email FROM users WHERE id = ?', [parseInt(id)]);
-    if (user.length > 0 && user[0].email === 'admin123@gmail.com') return res.status(400).json({ error: 'Cannot delete admin.' });
+    const user = await db.query('SELECT role FROM users WHERE id = ?', [parseInt(id)]);
+    if (user.length > 0 && user[0].role === 'admin') return res.status(400).json({ error: 'Cannot delete admin.' });
 
     await db.query('DELETE FROM children WHERE parent_id = ?', [parseInt(id)]);
     await db.query('DELETE FROM activities WHERE teacher_id = ?', [parseInt(id)]);

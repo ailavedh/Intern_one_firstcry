@@ -392,7 +392,7 @@ export default function LoginPortal({ onLoginSuccess }) {
               <button
                 type="button"
                 onClick={() => { setForgotStep(1); setError(''); setSuccess(''); }}
-                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', textDecoration: 'underline', fontFamily: 'inherit' }}
               >
                 Forgot Password?
               </button>
