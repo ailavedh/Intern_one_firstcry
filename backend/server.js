@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const db = require('./config/db');
@@ -38,7 +39,44 @@ const upload = multer({
     cb(new Error('Only images are allowed!'));
   },
   limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
+
+let transporter;
+async function setupTransporter() {
+  if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: process.env.SMTP_PORT == 465,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+    console.log('Using configured SMTP credentials.');
+  } else {
+    try {
+      let testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log('Using Ethereal fallback for email testing.');
+    } catch (e) {
+      console.error('Failed to create Ethereal test account', e);
+    }
+  }
+}
+setupTransporter();
+
+// In-memory OTP store: email -> { otp, expiresAt }
+const otpStore = new Map();
 
 // --- API ROUTES ---
 
@@ -85,6 +123,81 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json(created[0]);
   } catch (err) {
     res.status(500).json({ error: 'Registration error occurred.' });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+  try {
+    const userRows = await db.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found.' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    otpStore.set(email.toLowerCase(), { otp, expiresAt });
+
+    if (transporter) {
+      let info = await transporter.sendMail({
+        from: '"Daily Activity Portal" <noreply@dailyactivity.com>',
+        to: email,
+        subject: "Password Reset OTP",
+        text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+        html: `<b>Your OTP for password reset is: ${otp}</b><br/>It is valid for 10 minutes.`
+      });
+      console.log("OTP email sent to %s. MessageId: %s", email, info.messageId);
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log("Ethereal Preview URL: %s", previewUrl);
+      }
+    } else {
+       console.log('OTP generated (no email config):', otp);
+    }
+
+    res.json({ success: true, message: 'OTP sent to email.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Failed to process forgot password request.' });
+  }
+});
+
+app.post('/api/auth/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Email and OTP are required.' });
+
+  const record = otpStore.get(email.toLowerCase());
+  if (!record) return res.status(400).json({ error: 'No OTP requested for this email or it has expired.' });
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email.toLowerCase());
+    return res.status(400).json({ error: 'OTP has expired.' });
+  }
+
+  if (record.otp !== otp) {
+    return res.status(400).json({ error: 'Invalid OTP.' });
+  }
+
+  res.json({ success: true, message: 'OTP verified.' });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) return res.status(400).json({ error: 'All fields are required.' });
+
+  const record = otpStore.get(email.toLowerCase());
+  if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
+    return res.status(400).json({ error: 'Invalid or expired OTP.' });
+  }
+
+  try {
+    await db.query('UPDATE users SET password = ? WHERE email = ?', [newPassword, email]);
+    otpStore.delete(email.toLowerCase());
+    res.json({ success: true, message: 'Password reset successfully.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password.' });
   }
 });
 
