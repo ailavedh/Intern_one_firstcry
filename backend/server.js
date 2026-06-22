@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const db = require('./config/db');
@@ -39,6 +40,42 @@ const upload = multer({
   },
   limits: { fileSize: 5 * 1024 * 1024 }
 });
+
+let transporter;
+async function setupTransporter() {
+  if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: process.env.SMTP_PORT == 465,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000
+    });
+    console.log('Using configured SMTP credentials.');
+  } else {
+    try {
+      let testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      console.log('Using Ethereal fallback for email testing.');
+    } catch (e) {
+      console.error('Failed to create Ethereal test account', e);
+    }
+  }
+}
+setupTransporter();
 
 // In-memory OTP store: email -> { otp, expiresAt }
 const otpStore = new Map();
@@ -104,28 +141,22 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     otpStore.set(email.toLowerCase(), { otp, expiresAt });
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer re_7L1KYQHx_EhLdULoGtzYMAyWEV5yQkuVa'
-      },
-      body: JSON.stringify({
-        from: 'Daily Activity Portal <onboarding@resend.dev>',
+    if (transporter) {
+      let info = await transporter.sendMail({
+        from: `"Daily Activity Portal" <${process.env.SMTP_USER || 'noreply@dailyactivity.com'}>`,
         to: email,
-        subject: 'Password Reset OTP',
+        subject: "Password Reset OTP",
         text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
         html: `<b>Your OTP for password reset is: ${otp}</b><br/>It is valid for 10 minutes.`
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Resend API error:", errorData);
-      throw new Error('Failed to send email via Resend API');
+      });
+      console.log("OTP email sent to %s. MessageId: %s", email, info.messageId);
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log("Ethereal Preview URL: %s", previewUrl);
+      }
+    } else {
+      console.log('OTP generated (no email config):', otp);
     }
-
-    console.log("OTP email sent to %s via Resend.", email);
     res.json({ success: true, message: 'OTP sent to email.' });
   } catch (err) {
     console.error('Forgot password error:', err);
