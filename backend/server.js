@@ -140,7 +140,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     if (transporter) {
       let info = await transporter.sendMail({
-        from: '"Daily Activity Portal" <noreply@dailyactivity.com>',
+        from: `"Daily Activity Portal" <${process.env.SMTP_USER || 'noreply@dailyactivity.com'}>`,
         to: email,
         subject: "Password Reset OTP",
         text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
