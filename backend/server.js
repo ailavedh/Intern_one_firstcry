@@ -220,9 +220,20 @@ app.post('/api/users', async (req, res) => {
 
 app.delete('/api/users/:id', async (req, res) => {
   const { id } = req.params;
+  const requesterEmail = req.query.requesterEmail || '';
+  const PRIMARY_ADMIN_EMAIL = 'ailavedhsathvik2007@gmail.com';
+
   try {
-    const user = await db.query('SELECT role FROM users WHERE id = ?', [parseInt(id)]);
-    if (user.length > 0 && user[0].role === 'admin') return res.status(400).json({ error: 'Cannot delete admin.' });
+    const user = await db.query('SELECT role, email FROM users WHERE id = ?', [parseInt(id)]);
+    
+    if (user.length > 0 && user[0].role === 'admin') {
+      if (user[0].email === PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ error: 'Cannot delete the primary admin.' });
+      }
+      if (requesterEmail !== PRIMARY_ADMIN_EMAIL) {
+        return res.status(403).json({ error: 'Only the primary admin can delete other admins.' });
+      }
+    }
 
     await db.query('UPDATE children SET parent_id = NULL WHERE parent_id = ?', [parseInt(id)]);
     await db.query('DELETE FROM activities WHERE teacher_id = ?', [parseInt(id)]);

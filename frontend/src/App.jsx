@@ -102,6 +102,7 @@ export default function App() {
             allUsers={allUsers} 
             refreshUsers={fetchUsers} 
             setAllUsers={setAllUsers}
+            currentUser={currentUser}
           />
         );
       case 'teacher':

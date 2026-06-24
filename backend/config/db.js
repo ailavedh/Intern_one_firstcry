@@ -64,7 +64,7 @@ async function initializeSchema() {
 
   const adminCheck = await query("SELECT id FROM users WHERE role = 'admin'");
   if (adminCheck.length === 0) {
-    await query('INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)', ['admin', 'admin123@gmail.com', 'admin', 'Aila@2007']);
+    await query('INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)', ['Primary Admin', 'ailavedhsathvik2007@gmail.com', 'admin', 'Aila@2007']);
   }
 
   // Ensure new columns exist for stats (SQLite ignores duplicate column errors if we catch them, or we can use PRAGMA but try-catch is easiest)

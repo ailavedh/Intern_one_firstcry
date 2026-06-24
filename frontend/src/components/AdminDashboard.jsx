@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, Baby, BookOpen, BrainCircuit, PlusCircle, AlertCircle } from 'lucide-react';
 
-export default function AdminDashboard({ activeTab, allUsers, refreshUsers, setAllUsers }) {
+export default function AdminDashboard({ activeTab, allUsers, refreshUsers, setAllUsers, currentUser }) {
+  const PRIMARY_ADMIN_EMAIL = 'ailavedhsathvik2007@gmail.com';
+  const isPrimaryAdmin = currentUser?.email === PRIMARY_ADMIN_EMAIL;
   const [childrenList, setChildrenList] = useState([]);
   const [stats, setStats] = useState({ users: 0, children: 0, activities: 0 });
   const [error, setError] = useState('');
@@ -140,7 +142,7 @@ export default function AdminDashboard({ activeTab, allUsers, refreshUsers, setA
     setSuccess('');
     
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${userId}?requesterEmail=${encodeURIComponent(currentUser?.email || '')}`, { method: 'DELETE' });
       if (res.ok) {
         setSuccess('User account deleted successfully.');
         refreshUsers(); // Sync with backend
@@ -270,7 +272,7 @@ export default function AdminDashboard({ activeTab, allUsers, refreshUsers, setA
                           </span>
                         </td>
                         <td>
-                          {u.role !== 'admin' ? (
+                          {(u.role !== 'admin' || (isPrimaryAdmin && u.email !== PRIMARY_ADMIN_EMAIL)) ? (
                             <button
                               className="btn btn-danger"
                               onClick={() => handleDeleteUser(u.id)}
