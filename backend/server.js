@@ -95,20 +95,20 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, childId } = req.body;
+  const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required.' });
 
   try {
     const existing = await db.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) return res.status(400).json({ error: 'Email already exists.' });
 
+    const children = await db.query('SELECT id FROM children WHERE LOWER(parent_username) = ?', [email.toLowerCase()]);
+    if (children.length === 0) return res.status(400).json({ error: 'No student found with this email. Please check again.' });
+
     await db.query('INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)', [name, email, 'parent', password]);
     const created = await db.query('SELECT id, name, email, role FROM users WHERE email = ?', [email]);
     const parentId = created[0].id || created[0].ID;
 
-    if (childId) {
-      await db.query('UPDATE children SET parent_id = ?, parent_username = ? WHERE id = ?', [parentId, email, parseInt(childId)]);
-    }
     await db.query('UPDATE children SET parent_id = ? WHERE LOWER(parent_username) = ?', [parentId, email.toLowerCase()]);
     res.status(201).json(created[0]);
   } catch (err) {
@@ -201,8 +201,19 @@ app.post('/api/users', async (req, res) => {
     const existing = await db.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) return res.status(400).json({ error: 'User exists.' });
 
+    if (role === 'parent') {
+      const children = await db.query('SELECT id FROM children WHERE LOWER(parent_username) = ?', [email.toLowerCase()]);
+      if (children.length === 0) return res.status(400).json({ error: 'No student found with this email. Please check again.' });
+    }
+
     await db.query('INSERT INTO users (name, email, role, password) VALUES (?, ?, ?, ?)', [name, email, role, password]);
     const created = await db.query('SELECT id, name, email, role FROM users WHERE email = ?', [email]);
+
+    if (role === 'parent') {
+      const parentId = created[0].id || created[0].ID;
+      await db.query('UPDATE children SET parent_id = ? WHERE LOWER(parent_username) = ?', [parentId, email.toLowerCase()]);
+    }
+
     res.status(201).json(created[0]);
   } catch (err) { res.status(500).json({ error: 'Failed to create user' }); }
 });
@@ -213,7 +224,7 @@ app.delete('/api/users/:id', async (req, res) => {
     const user = await db.query('SELECT role FROM users WHERE id = ?', [parseInt(id)]);
     if (user.length > 0 && user[0].role === 'admin') return res.status(400).json({ error: 'Cannot delete admin.' });
 
-    await db.query('DELETE FROM children WHERE parent_id = ?', [parseInt(id)]);
+    await db.query('UPDATE children SET parent_id = NULL WHERE parent_id = ?', [parseInt(id)]);
     await db.query('DELETE FROM activities WHERE teacher_id = ?', [parseInt(id)]);
     await db.query('DELETE FROM counsellor_notes WHERE counsellor_id = ?', [parseInt(id)]);
     await db.query('DELETE FROM users WHERE id = ?', [parseInt(id)]);
@@ -251,6 +262,8 @@ app.post('/api/children', async (req, res) => {
 
 app.delete('/api/children/:id', async (req, res) => {
   try {
+    await db.query('DELETE FROM activities WHERE child_id = ?', [parseInt(req.params.id)]);
+    await db.query('DELETE FROM counsellor_notes WHERE child_id = ?', [parseInt(req.params.id)]);
     await db.query('DELETE FROM children WHERE id = ?', [parseInt(req.params.id)]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Failed to delete child.' }); }

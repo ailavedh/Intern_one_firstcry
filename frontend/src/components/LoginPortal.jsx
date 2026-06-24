@@ -19,29 +19,8 @@ export default function LoginPortal({ onLoginSuccess }) {
   const [regForm, setRegForm] = useState({
     name: '',
     email: '',
-    password: '',
-    childId: ''
+    password: ''
   });
-
-  const [unassignedChildren, setUnassignedChildren] = useState([]);
-
-  useEffect(() => {
-    if (isRegister) {
-      fetchUnassignedChildren();
-    }
-  }, [isRegister]);
-
-  const fetchUnassignedChildren = async () => {
-    try {
-      const res = await fetch('/api/children/unassigned');
-      if (res.ok) {
-        const data = await res.json();
-        setUnassignedChildren(data);
-      }
-    } catch (err) {
-      console.error('Failed to load children:', err);
-    }
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -445,22 +424,7 @@ export default function LoginPortal({ onLoginSuccess }) {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Select Your Child</label>
-              <select
-                className="form-select"
-                value={regForm.childId}
-                onChange={(e) => setRegForm({ ...regForm, childId: e.target.value })}
-                disabled={loading}
-              >
-                <option value="">-- Select Child --</option>
-                {unassignedChildren.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.class_name})
-                  </option>
-                ))}
-              </select>
-            </div>
+
 
             <div className="form-group">
               <label className="form-label">Password</label>
